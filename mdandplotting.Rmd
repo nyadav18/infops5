@@ -1,0 +1,29 @@
+---
+title: "Problem Set 5"
+author: "Nikita Yadav"
+date: "Feb 18, 2023"
+output: html_document
+---
+
+### Load and Check Data
+
+```{r}
+library(readr)
+library(tidyverse)
+gapminder_data <- read_delim("gapminder.csv")
+```
+This dataset has `r nrow(gapminder_data)` rows and `r ncol(gapminder_data)`
+columns.
+```{r}
+print(head(gapminder_data))
+```
+My small sample of data does look ok! It does look like there are a lot of missing values though.
+
+### Descriptive Statistics
+
+```{r}
+num_iso3 <- length(unique(gapminder_data$iso3))
+num_name <- length(unique(gapminder_data$name))
+num_iso2 <- length(unique(gapminder_data$iso2))
+```
+Each of the three variables to be evaluated for question 1 in this section has a different number of unique elements. According to `iso3`, there are `r num_iso3` countries. According to `name`, there are `r num_name` countries. And according to `iso2`, there are `r num_iso2` countries.
