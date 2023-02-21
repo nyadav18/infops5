@@ -29,7 +29,6 @@ num_iso2 <- length(unique(gapminder_data$iso2))
 ```
 Each of the three variables to be evaluated for question 1 in this section has a different number of unique elements. According to `iso3`, there are `r num_iso3` countries. According to `name`, there are `r num_name` countries. And according to `iso2`, there are `r num_iso2` countries.
 
-iterate through num_names in iso2_only dataframe and if any value is greater than 1 pull out the iso2 code and save it as a vector. find where iso2 == NA and print gapminder_data$name that corresponds. get index
 ```{r}
 iso2_only <- gapminder_data %>%
   group_by(iso2) %>%
@@ -148,7 +147,7 @@ ggplot(avg_co2, aes(avg_co2$region, avg_co2$avg_co2_pc,
     x = "Region",
     y = "Avg CO2 Emissions per capita") +
   scale_fill_manual(
-    values = c("#e41a1c", "#377eb8"),
+    values = c("#e41a1d", "#377eb9"),
     name="Year"
   )
 ```
@@ -183,3 +182,128 @@ smallest_emitters <- CO2_2016 %>%
 Because 2019 is missing data for the co2_PC variable, I did this problem using 2016 stats. The  largest CO2 emitters per region are `r paste(largest_emitters$name, collapse=", ")`. The smallest CO2 emiiters per region are `r paste(smallest_emitters$name, collapse=", ")`.
 
 ### GDP Per Capita
+
+```{r}
+GDP_1960 <- gapminder_data %>%
+  filter(time==1960)
+
+ggplot(GDP_1960,
+       aes(GDP_1960$GDP_PC, GDP_1960$lifeExpectancy,
+           size = GDP_1960$totalPopulation,
+           color = GDP_1960$region)) +
+  geom_point() +
+  labs(
+    x = "GDP per capita",
+    y = "Life Expectancy",
+    title = "GDP per capita vs life expectancy (1960)") +
+  scale_color_brewer(palette = "Set1", name = "Region") +
+  scale_size_continuous(range = c(1, 10), name = "Population Size")
+```
+
+Based on this plot, it looks like Africa and Asia have both the lowest GDP per capita and are on the lower end of the life expectancy spectrum. Europe comes up on top for life expectancy and GDP. The Americas and Oceania are in the middle of the two extremes. 
+
+```{r}
+GDP_2019 <- gapminder_data %>%
+  filter(time==2019)
+
+ggplot(GDP_2019,
+       aes(GDP_2019$GDP_PC, GDP_2019$lifeExpectancy,
+           size = GDP_2019$totalPopulation,
+           color = GDP_2019$region)) +
+  geom_point() +
+  labs(
+    x = "GDP per capita",
+    y = "Life Expectancy",
+    title = "GDP per capita vs life expectancy (2019)") +
+  scale_color_brewer(palette = "Set1", name = "Region") +
+  scale_size_continuous(name = "Population Size")
+
+```
+
+The range for GDP per capita values tripled between 1960 and 2019. The distribution for the most part looks similar to 1960, but life expectancy has increased a bit across all regions. Africa is still on the lowest end of both GDP and life expectancy and Europe is on the highest end for both variables. 
+
+```{r}
+time_filter <- c("1960", "2019")
+avg_LE <- gapminder_data %>%
+  filter(time %in% time_filter) %>%
+  group_by(region, time, .groups="rowwise") %>%
+  summarize(avg_LE = mean(lifeExpectancy, na.rm=TRUE))
+
+head(avg_LE)
+```
+
+I included the first few rows from my new dataframe displaying the average life expectancy for each region for the years 1960 and 2019. The results do match the figures. For example, in 2019, Africa's average life expectancy is about 64 years and in the 2019 GDP plot, the center of the Africa points is right around the 64 or 65 year mark.
+
+```{r}
+LE_growth <- gapminder_data %>%
+  filter(time %in% time_filter) %>%
+  drop_na(lifeExpectancy)%>%
+  group_by(region) %>%
+  summarize(avg_le_growth = mean(lifeExpectancy[time == 2019] -
+                                   lifeExpectancy[time == 1960]))
+
+LE_growth %>%
+  arrange(avg_le_growth)
+```
+
+Europe has had the smallest amount of growth in life expectancy from 1960 to 2019 and Asia had the highest amount of average growth between the two years. 
+
+```{r}
+gdp_hist <- gapminder_data %>%
+  filter(time %in% time_filter) %>%
+  drop_na(GDP_PC) %>%
+  select(time, GDP_PC)
+
+ggplot(data = gdp_hist) +
+  geom_histogram(aes(x = gdp_hist$GDP_PC, fill=factor(time)), 
+                 position = "dodge") +
+  labs(x = "GDP per Capita",
+       title = "GDP per capita for 1960 and 2019"
+  )
+```
+
+```{r}
+US_rank <- gapminder_data %>%
+  filter(time %in% time_filter) %>%
+  select(name, time, lifeExpectancy) %>%
+  arrange(desc(lifeExpectancy))
+
+le_rank_1960 <- US_rank %>%
+  filter(time==1960) %>%
+  drop_na(name) %>%
+  #arrange(desc(lifeExpectancy))
+  mutate(ranking = rank(desc(lifeExpectancy)))
+
+le_rank_2019 <- US_rank %>%
+  filter(time==2019) %>%
+  drop_na(name) %>%
+  mutate(ranking = rank(desc(lifeExpectancy)))
+
+```
+
+The ranking of the U.S. in terms of life expectancy in 1960 was `r paste(which(le_rank_1960$name=="United States of America"))` and in 2019 it was `r paste(which(le_rank_2019$name=="United States of America"))`.
+
+```{r}
+num_countries <- gapminder_data %>%
+  filter(!is.na(lifeExpectancy)) %>%
+  group_by(time) %>%
+  summarize(n = n())
+
+yearly_rank <- gapminder_data %>%
+  filter(!is.na(lifeExpectancy)) %>%
+  filter(!is.na(name)) %>%
+  group_by(time) %>%
+  mutate(ranking = rank(desc(lifeExpectancy))) %>%
+  filter(name == "United States of America") %>%
+  select(time, ranking)
+
+relative_rank <- num_countries %>%
+  left_join(yearly_rank, by = "time") %>%
+  mutate(relative_rank = ranking / n)
+
+head(relative_rank)
+```
+
+I included just the first few rows of my relative rank dataframe. With the relative rank, it is clear that the U.S. dropped in the rankings because of the increase in number of countries. Still, the U.S. is doing worse in terms of life expectancy than before.
+
+I spent about 12 hours on this problem set!
